@@ -92,18 +92,25 @@ const pageCreate = async () => {
 };
 
 const updatePage = async (id) => {
-    const pageID = id;
-    const updateResponse = await notion.pages.update({
-      page_id: pageID,
-      properties: {
-        Status: {
-          select: {
-            name: "Archived"
-          }
+  const pageID = id;
+  const updateResponse = await notion.pages.update({
+    page_id: pageID,
+    properties: {
+      Status: {
+        select: {
+          name: "Archived"
         }
       }
-    });
-    console.log(updateResponse);
+    }
+  });
+  console.log(updateResponse);
+};
+
+const retrieveDatabase = async () => {
+  const response = await notion.databases.retrieve({
+    database_id: process.env.DATABASE_ID_BOARD,
+  });
+  console.log(response);
 };
 
 
@@ -132,7 +139,7 @@ const uppatePageFetch = async (id) => {
   console.log(response);
 }
 
-wait()
-.then(response => response.json())
-.then(response => console.log(response))
-.catch(err => console.error(err));
+// updatePageFetch()
+// .then(response => response.json())
+// .then(response => console.log(response))
+// .catch(err => console.error(err));
