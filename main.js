@@ -146,4 +146,5 @@ const uppatePageFetch = async (id) => {
 // .then(response => console.log(response))
 // .catch(err => console.error(err));
 
-retrieveDatabase();
+const data = retrieveDatabase();
+console.log(data.then((data) => data.id));
