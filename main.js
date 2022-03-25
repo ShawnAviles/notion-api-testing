@@ -91,6 +91,7 @@ const pageCreate = async () => {
   return response.id;
 };
 
+
 const updatePage = async (id) => {
   const pageID = id;
   const updateResponse = await notion.pages.update({
@@ -105,6 +106,7 @@ const updatePage = async (id) => {
   });
   console.log(updateResponse);
 };
+
 
 const retrieveDatabase = async () => {
   const response = await notion.databases.retrieve({
@@ -139,7 +141,10 @@ const uppatePageFetch = async (id) => {
   console.log(response);
 }
 
-// updatePageFetch()
+// updatePageFetch(process.env.DATABASE_ID_BOARD)
 // .then(response => response.json())
 // .then(response => console.log(response))
 // .catch(err => console.error(err));
+
+
+retrieveDatabase();
