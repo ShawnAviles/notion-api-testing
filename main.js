@@ -55,11 +55,11 @@ const pageCreateSDK = async (text, date) => {
 };
 
 // Using Axios to create POST Request
-const pageCreateAxios = async (text, date) => {
+const pageCreateAxios = async (header, text, date) => {
   const token = process.env.NOTION_TOKEN;
   const options = {
     method: 'POST',
-    url: 'https://cors-anywhere.herokuapp.com/https://api.notion.com/v1/pages',
+    url: 'https://api.notion.com/v1/pages', // prepended with https://cors-anywhere.herokuapp.com/ as a proxy in dev env
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
@@ -76,16 +76,22 @@ const pageCreateAxios = async (text, date) => {
             {
               type: 'text',
               text: {
-                content: `${date}`,
+                content: `${header}`,
               },
             },
           ],
         },
-        Status: {
+        'Status': {
           select : {
             name : "Live"
           }
         },
+        'Created': {
+          date: {
+            start: `${date}`,
+            //time_zone: 'America/New_York'
+          }
+        }
       },
       children : [
         {
@@ -105,10 +111,17 @@ const pageCreateAxios = async (text, date) => {
       ],
     }
   };
-  const res = await axios.request(options);
-  return res.data.id
+  const response = await axios.request(options);
+  return response.data.id;
 }
 
+/** Testing Method 1
+ *  Date String has to be ISO 8601 format
+ *  Saves as a UTC Time zone
+ *  Todo - Fix the time zone the date is saved in
+ */
+// const date = new Date();
+// pageCreateAxios('Test Axios Header', 'I hope the date saves', date.toISOString()).catch(err => console.log(err))
 
 /* UPDATE PAGE TO (TABLE) DATABASE */
 // Using built-in fetch to make PATCH request
@@ -122,17 +135,10 @@ const updatePageFetch = async (id) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      archived: false, 
-      properties: {
-        Status:{
-          select:{
-            name: "Archived"
-          }
-        }
-      }
+      archived: true, 
     })
   };
-  const response = fetch(`https://api.notion.com/v1/pages/${id}`, options)
+  const response = fetch(`https://api.notion.com/v1/pages/${id}`, options) // prepended with https://cors-anywhere.herokuapp.com/ as a proxy in dev env
   console.log(response);
 }
 
@@ -160,11 +166,27 @@ const updatePageSDK = async (id) => {
   console.log(updateResponse);
 };
 
+// update page using axios
+const updatePageAxios = async (id) => {
+  const token = process.env.NOTION_TOKEN;
+  const options = {
+    method: 'PATCH',
+    url: `https://api.notion.com/v1/pages/${id}`,
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Notion-Version': '2022-02-22',
+    },
+    data: {archived: true}
+  };
+  await axios.request(options)
+}
 
-/* RETRIEVE DATA FROM (TABLE) DATABASE */
+
+/* QUERYING DATA FROM (TABLE) DATABASE */
 // Using javascript sdk 
-const retrieveDatabaseID = async () => {
-  arrayID = [];
+const retrieveDatabaseIDSDK = async () => {
+  let arrayID = [];
   const dataID = process.env.DATABASE_ID_BOARD;
   const response = await notion.databases.query({ 
     database_id: dataID 
@@ -174,3 +196,106 @@ const retrieveDatabaseID = async () => {
 };
 
 //retrieveDatabaseID().then(arr => arr.forEach((id) => console.log(id)));
+
+// Using axios
+const retrieveDatabaseIDAxios = async (id) => {
+  const token = process.env.NOTION_TOKEN;
+  let arrayID = [];
+  const options = {
+    method: 'POST',
+    url: `https://api.notion.com/v1/databases/${id}/query`,
+    headers: {
+      Accept: 'application/json',
+      'Notion-Version': '2022-02-22',
+      Authorization: `Bearer ${token}`
+    },
+    data: {page_size: 100}
+  };
+  const response = await axios.request(options)
+  response.data.results.forEach(element => arrayID.push(element.id));
+  return arrayID;
+}
+//retrieveDatabaseIDAxios(process.env.DATABASE_ID_BOARD).then(array => array.forEach((element => console.log(element))))
+
+const retrieveTitlesAxios = async (id) => {
+  const token = process.env.NOTION_TOKEN;
+  let arrayTitles = [];
+  const options = {
+    method: 'POST',
+    url: `https://api.notion.com/v1/databases/${id}/query`,
+    headers: {
+      Accept: 'application/json',
+      'Notion-Version': '2022-02-22',
+      Authorization: `Bearer ${token}`
+    },
+    data: {page_size: 100}
+  };
+  const response = await axios.request(options)
+  response.data.results.forEach(element => arrayTitles.push(element.properties.Name.title[0].plain_text));
+  return arrayTitles;
+}
+//retrieveTitlesAxios(process.env.DATABASE_ID_BOARD).then(arr => arr.forEach(el => console.log(el)))
+
+const retrieveDatesAxios = async (id) => {
+  const token = process.env.NOTION_TOKEN;
+  let arrayDates = [];
+  const options = {
+    method: 'POST',
+    url: `https://api.notion.com/v1/databases/${id}/query`,
+    headers: {
+      Accept: 'application/json',
+      'Notion-Version': '2022-02-22',
+      Authorization: `Bearer ${token}`
+    },
+  };
+  const response = await axios.request(options)
+  response.data.results.forEach(element => arrayDates.push(element.properties.Created.date.start));
+  return arrayDates;
+}
+//retrieveDatesAxios(process.env.DATABASE_ID_BOARD).then((arr) => arr.forEach(el => console.log(el))).catch(err => console.log(err))
+
+/* QUERYING DATA FROM BLOCK */
+// A page is a block and I need to retrieve the text inside which are the children
+const retrieveBlockAxios = async (id) => {
+  const token = process.env.NOTION_TOKEN;
+  const options = {
+    method: 'GET',
+    url: `https://api.notion.com/v1/blocks/${id}/children`,
+    params: {page_size: '100'},
+    headers: {
+      Accept: 'application/json',
+      'Notion-Version': '2022-02-22',
+      Authorization: `Bearer ${token}`
+    }
+  };
+  const response = await axios.request(options)
+  return response.data.results[0].paragraph.rich_text[0].plain_text
+}
+//retrieveBlockAxios('0d93ec11-f916-4fd6-95f4-c0efd77ebce1')
+
+const createNoteListObject = async (databaseID) => {
+  let listObjects = []
+  const arrayID = await retrieveDatabaseIDAxios(databaseID)
+  const arrayTitles = await retrieveTitlesAxios(databaseID)
+  const arrayDates = await retrieveDatesAxios(databaseID)
+  for (let i = 0; i < arrayID.length; i++) {
+    let note = {
+      id: '',
+      header: '',
+      text: '',
+      date: '',
+    }
+    note.id = arrayID[i]
+    const blockText = await retrieveBlockAxios(arrayID[i])
+    note.header = arrayTitles[i]
+    note.text = blockText
+    const localDate = new Date(arrayDates[i])
+    note.date = localDate.toLocaleString()
+    listObjects.push(note)
+  }
+  return listObjects
+}
+
+createNoteListObject(process.env.DATABASE_ID_BOARD).then(res => console.log(res))
+
+
